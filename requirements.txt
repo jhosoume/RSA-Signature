@@ -1,0 +1,8 @@
+cffi==1.14.3
+click==7.1.2
+cryptography==3.2.1
+pyasn1==0.4.8
+pycparser==2.20
+pycryptodome==3.9.9
+pyOpenSSL==19.1.0
+six==1.15.0

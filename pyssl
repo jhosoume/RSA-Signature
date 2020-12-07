@@ -1,0 +1,72 @@
+#!/home/jhosoume/unb/seguranca/rsa_signature/rsa_sig/bin/python3
+import base64
+import click
+from Crypto.Hash import SHA3_512
+from src.rsa import pyRSA
+from src.keys import *
+
+@click.group()
+def main():
+    """
+    Simple CLI to create signatures based on RSA-OAEP
+    """
+    pass
+
+@main.command(name = 'genKeys')
+@click.argument('file_name', type = str, default = "key")
+@click.option('-s', '--bits', default = 1024, help = "Number of bits.")
+def genKeys(file_name: str, bits: int):
+    """
+    Generates the public and private key in the pem format.
+    """
+    print("Generating RSA keys, {} bit long modulus (2 primes)".format(bits))
+    keyPair = pyRSA.generate(bits = bits)
+    pub_key = (keyPair.e, keyPair.n)
+    prv_key = (keyPair.d, keyPair.n)
+    keyPair.save_pubKey(file_name)
+    keyPair.save_secKey(file_name)
+    print("e is {} ({})\n".format(keyPair.e, hex(keyPair.e)))
+
+@main.command(name = 'sign')
+@click.argument('input_file', type = click.File("r"))
+    #help = "Input message to be signed")
+@click.argument('sk_key', type = click.Path(exists = True))
+    # help = "Private Key")
+@click.option('-o', '--output', default = 'signature.sha3', help = "Output file for the signature.")
+def sign(input_file, sk_key, output):
+    """
+    Sign a message from file using the private key.
+    """
+    prv_key = load_secKey(click.format_filename(sk_key))
+    msg = str.encode(input_file.read())
+    hashed_msg = SHA3_512.new(msg)
+    cipher_text = pyRSA.encrypt_oaep(hashed_msg.digest(), prv_key)
+    # print(cipher_text)
+    with open("./{}".format(output), "w") as sign_file:
+        sign_file.write(base64.encodebytes(cipher_text).decode('ascii'))
+    print("Signature created!\n")
+
+@main.command(name = 'verify')
+@click.argument('input_file', type = click.File("r"))
+@click.argument('signature', type = click.File("r"))
+@click.argument('pk_key', type = click.Path(exists = True))
+def verify(input_file, signature, pk_key):
+    """
+    Check if the signature is valid for the given file.
+    """
+    pub_key = load_pubKey(click.format_filename(pk_key))
+    msg = str.encode(input_file.read())
+    hashed_msg = SHA3_512.new(msg)
+    cipher_text = base64.b64decode(signature.read().strip())
+    try:
+        signed_msg = pyRSA.decrypt_oaep(cipher_text, pub_key)
+    except Exception as exc:
+        print(exc)
+        return
+    if (hashed_msg.digest() == signed_msg):
+        print("Signature is valid.")
+    else:
+        print("Signature is invalid.")
+
+if __name__ == '__main__':
+    main()
