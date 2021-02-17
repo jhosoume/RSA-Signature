@@ -51,3 +51,6 @@ pip install -r requirements.txt
 ```console
 ./run_t1.sh
 ```
+---
+Documentation: 
+https://www.overleaf.com/read/vgnnsrfwsbfd
